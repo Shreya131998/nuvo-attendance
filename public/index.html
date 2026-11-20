@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Mark Cleaning</title>
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #ffffff; --text: #1d2430; --muted: #667085;
+      --primary: #1769e0; --primary-dark: #1256b8; --ok: #12a150; --err: #d92d20;
+      --border: #e3e7ec; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 480px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 20px;
+      box-shadow: 0 1px 3px rgba(16,24,40,.08); margin-bottom: 14px; }
+    .loc-label { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    h1 { font-size: 22px; margin: 4px 0 0; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    select { width: 100%; font-size: 17px; padding: 14px; border: 1px solid var(--border);
+      border-radius: 10px; background: #fff; color: var(--text); appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      border: 0; border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600;
+      cursor: pointer; background: var(--primary); color: #fff; }
+    .btn:active { background: var(--primary-dark); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.secondary { background: #eef2f7; color: var(--text); }
+    .btn.capture { width: 72px; height: 72px; border-radius: 50%; padding: 0; margin: 12px auto 0;
+      border: 5px solid #fff; box-shadow: 0 0 0 3px var(--primary); }
+    .row { display: flex; gap: 10px; margin-top: 10px; }
+    .row .btn { flex: 1; }
+    .camera-box { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
+    video, #preview { display: block; width: 100%; border-radius: 12px; }
+    .hint { font-size: 14px; color: var(--muted); margin-top: 8px; }
+    .error { background: #fef3f2; color: var(--err); border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
+    .warn { background: #fffaeb; color: #b54708; border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
+    .hidden { display: none !important; }
+    .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .done { text-align: center; padding: 36px 20px; }
+    .tick { width: 84px; height: 84px; border-radius: 50%; background: var(--ok); color: #fff;
+      font-size: 48px; line-height: 84px; margin: 0 auto 16px; }
+    .done h2 { margin: 0 0 6px; font-size: 24px; }
+    .done p { margin: 4px 0; color: var(--muted); }
+    .done strong { color: var(--text); }
+    .admin-link { display: block; margin: 28px auto 8px; padding: 12px; text-align: center; font-size: 15px;
+      font-weight: 600; color: var(--muted); text-decoration: none; border: 1px solid var(--border);
+      border-radius: 12px; background: var(--card); }
+    .admin-link:active { background: #eef2f7; }
+    .topbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .lang-btn { font: inherit; font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--card); color: var(--primary); cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar"><button id="langBtn" class="lang-btn" type="button"></button></div>
+
+  <div id="loading" class="card"><p class="hint" style="margin:0" data-i18n="loading"></p></div>
+
+  <div id="invalid" class="card hidden">
+    <h1 data-i18n="cantOpen"></h1>
+    <p id="invalidMsg" class="hint"></p>
+  </div>
+
+  <div id="form" class="hidden">
+    <div class="card">
+      <div class="loc-label" data-i18n="kicker"></div>
+      <h1 data-i18n="title"></h1>
+    </div>
+
+    <div class="card">
+      <label for="loc" data-i18n="qLoc"></label>
+      <select id="loc"></select>
+      <div id="locFixed" class="hidden" style="font-size:18px;font-weight:600"></div>
+    </div>
+
+    <div class="card">
+      <label for="name" data-i18n="qName"></label>
+      <select id="name"></select>
+    </div>
+
+    <div class="card">
+      <label data-i18n="qPhoto"></label>
+
+      <button id="startBtn" class="btn" type="button" data-i18n="takePhoto"></button>
+
+      <div id="cameraView" class="hidden">
+        <div class="camera-box"><video id="video" playsinline autoplay muted></video></div>
+        <button id="captureBtn" class="btn capture" type="button" data-i18n-aria="capture"></button>
+        <p class="hint" style="text-align:center" data-i18n="pointHint"></p>
+      </div>
+
+      <div id="fallbackView" class="hidden">
+        <label for="fileInput" class="btn" data-i18n="openCamera"></label>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden">
+        <p class="hint" data-i18n="cameraHint"></p>
+      </div>
+
+      <div id="previewView" class="hidden">
+        <img id="preview" alt="">
+        <div class="row"><button id="retakeBtn" class="btn secondary" type="button" data-i18n="retake"></button></div>
+      </div>
+
+      <div id="photoError" class="error hidden"></div>
+    </div>
+
+    <button id="submitBtn" class="btn" type="button" disabled>
+      <span id="submitSpin" class="spinner hidden"></span><span id="submitText"></span>
+    </button>
+    <div id="submitError" class="error hidden"></div>
+  </div>
+
+  <div id="success" class="card done hidden">
+    <div class="tick">✓</div>
+    <h2 data-i18n="thanks"></h2>
+    <p data-i18n="recorded"></p>
+    <p><strong id="okName"></strong></p>
+    <p><strong id="okLoc"></strong></p>
+    <p id="okTime"></p>
+    <div id="okWarn" class="warn hidden" data-i18n="dupWarn"></div>
+  </div>
+
+  <a href="/admin" class="admin-link" data-i18n="admin"></a>
+
+</div>
+
+<script>
+  // All worker-facing text, in Hindi (default) and English.
+  const STRINGS = {
+    hi: {
+      langBtn: 'English',
+      loading: 'लोड हो रहा है…',
+      cantOpen: 'फ़ॉर्म नहीं खुल सका',
+      kicker: 'सफ़ाई हाज़िरी',
+      title: 'अपना काम दर्ज करें',
+      qLoc: '1. आपने कौन सा शौचालय साफ़ किया?',
+      selLoc: '— शौचालय चुनें —',
+      qName: '2. आपका नाम',
+      selName: '— अपना नाम चुनें —',
+      qPhoto: '3. साफ़ किए गए शौचालय की फ़ोटो',
+      takePhoto: '📷 फ़ोटो लें',
+      capture: 'फ़ोटो खींचें',
+      pointHint: 'साफ़ शौचालय की ओर कैमरा करें और बटन दबाएँ',
+      openCamera: '📷 कैमरा खोलें',
+      cameraHint: 'फ़ोन का कैमरा खुलेगा। गैलरी की फ़ोटो स्वीकार नहीं होगी।',
+      retake: '↺ दोबारा लें',
+      submit: 'जमा करें',
+      submitting: 'जमा हो रहा है…',
+      thanks: 'धन्यवाद!',
+      recorded: 'आपकी सफ़ाई दर्ज हो गई',
+      at: 'समय',
+      dupWarn: 'आप पिछले 30 मिनट में इस जगह के लिए पहले ही जमा कर चुके हैं।',
+      admin: '🔒 एडमिन डैशबोर्ड',
+      errFile: 'यह पेज फ़ाइल के रूप में खुला है, इसलिए सर्वर से नहीं जुड़ सकता। ऐप का वेबसाइट लिंक खोलें।',
+      errNoLoc: 'अभी कोई शौचालय जोड़ा नहीं गया है। एडमिन से जोड़ने को कहें।',
+      errLoad: 'फ़ॉर्म नहीं खुल सका। इंटरनेट कनेक्शन जाँचें और फिर कोशिश करें।',
+      errNotPhoto: 'कृपया फ़ोटो लें।',
+      errOldPhoto: 'यह गैलरी की पुरानी फ़ोटो लगती है। कृपया कैमरे से नई फ़ोटो लें।',
+      errReadPhoto: 'फ़ोटो पढ़ी नहीं जा सकी। फिर से कोशिश करें।',
+      errNoNet: 'इंटरनेट कनेक्शन नहीं है। फिर से कोशिश करें।',
+      errGeneric: 'कुछ गड़बड़ हो गई। फिर से कोशिश करें।',
+      errPickLoc: 'कृपया वह शौचालय चुनें जो आपने साफ़ किया।',
+      errPickName: 'कृपया सूची से अपना नाम चुनें।',
+      errNoPhoto: 'फ़ोटो नहीं मिली। कृपया फ़ोटो लें।',
+      errBigPhoto: 'फ़ोटो बहुत बड़ी है। कृपया दोबारा लें।',
+    },
+    en: {
+      langBtn: 'हिंदी',
+      loading: 'Loading…',
+      cantOpen: "Can't open form",
+      kicker: 'Cleaning attendance',
+      title: 'Mark your work',
+      qLoc: '1. Which toilet did you clean?',
+      selLoc: '— Select toilet —',
+      qName: '2. Your name',
+      selName: '— Select your name —',
+      qPhoto: '3. Photo of the cleaned toilet',
+      takePhoto: '📷 Take Photo',
+      capture: 'Capture photo',
+      pointHint: 'Point at the cleaned toilet and tap the button',
+      openCamera: '📷 Open Camera',
+      cameraHint: 'Your phone camera will open. Gallery photos are not accepted.',
+      retake: '↺ Retake',
+      submit: 'Submit',
+      submitting: 'Submitting…',
+      thanks: 'Thank you!',
+      recorded: 'Your cleaning has been recorded',
+      at: 'at',
+      dupWarn: 'You already submitted for this location in the last 30 minutes.',
+      admin: '🔒 Admin Dashboard',
+      errFile: 'This page was opened as a file, so it cannot reach the server. Open the app\'s website link instead.',
+      errNoLoc: 'No toilets are set up yet. Ask the admin to add them.',
+      errLoad: 'Could not load the form. Check your internet connection and try again.',
+      errNotPhoto: 'Please take a photo.',
+      errOldPhoto: 'This looks like an old photo from the gallery. Please take a new photo with the camera.',
+      errReadPhoto: 'Could not read the photo. Please try again.',
+      errNoNet: 'No internet connection. Please try again.',
+      errGeneric: 'Something went wrong. Please try again.',
+      errPickLoc: 'Please select the toilet you cleaned.',
+      errPickName: 'Please select your name from the list.',
+      errNoPhoto: 'Photo missing. Please take a photo.',
+      errBigPhoto: 'Photo is too large. Please retake it.',
+    },
+  };
+
+  // Server error messages (English) → translation keys.
+  const SERVER_ERRORS = {
+    'Please select the toilet you cleaned.': 'errPickLoc',
+    'Please select your name from the list.': 'errPickName',
+    'Photo missing. Please take a photo.': 'errNoPhoto',
+    'Photo is too large. Please retake it.': 'errBigPhoto',
+  };
+
+  const MAX_SIDE = 1280;
+  const JPEG_QUALITY = 0.7;
+  const MAX_FILE_AGE_MS = 2 * 60 * 1000;
+
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => el.classList.toggle('hidden', !on);
+  let photoData = null;
+  let stream = null;
+  let usingFallback = false;
+  let busy = false;
+  let BOOT = null;
+  let lastResult = null;
+
+  function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  let lang = storageGet('lang') === 'en' ? 'en' : 'hi';
+  const t = key => STRINGS[lang][key] || STRINGS.en[key] || key;
+  // Worker and toilet names show in Hindi when the form is in Hindi and a Hindi name exists.
+  const label = item => (lang === 'hi' && item.nameHi) ? item.nameHi : item.name;
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+    // Messages shown at runtime remember their key, so they switch language too.
+    document.querySelectorAll('[data-msg]').forEach(el => { el.textContent = t(el.dataset.msg); });
+    $('langBtn').textContent = t('langBtn');
+    $('submitText').textContent = t(busy ? 'submitting' : 'submit');
+    if (BOOT && BOOT.ok) { renderLocations(); renderNames(); }
+    if (lastResult) renderSuccess();
+  }
+
+  $('langBtn').addEventListener('click', () => {
+    lang = lang === 'hi' ? 'en' : 'hi';
+    storageSet('lang', lang);
+    applyLang();
+  });
+
+  /** Shows a translated message in `el` (or hides it when key is empty). */
+  function setMsg(el, key) {
+    if (key) el.dataset.msg = key; else delete el.dataset.msg;
+    el.textContent = key ? t(key) : '';
+    show(el, !!key);
+  }
+
+  function renderLocations() {
+    const sel = $('loc');
+    const current = sel.value;
+    sel.innerHTML = '';
+    addOption(sel, '', t('selLoc'));
+    BOOT.locations.forEach(l => addOption(sel, l.id, label(l)));
+    sel.value = current;
+    if (BOOT.locations.length === 1) $('locFixed').textContent = label(BOOT.locations[0]);
+  }
+
+  function renderNames() {
+    const sel = $('name');
+    const current = sel.value;
+    sel.innerHTML = '';
+    addOption(sel, '', t('selName'));
+    BOOT.staff.forEach(s => addOption(sel, s.name, label(s)));
+    sel.value = current;
+  }
+
+  function formatDate(dateStr) {
+    const p = dateStr.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function renderSuccess() {
+    const r = lastResult;
+    const loc = BOOT.locations.find(l => l.id === r.locId);
+    const worker = BOOT.staff.find(s => s.name === r.name);
+    $('okName').textContent = worker ? label(worker) : r.name;
+    $('okLoc').textContent = loc ? label(loc) : r.locName;
+    $('okTime').textContent = formatDate(r.date) + ', ' + t('at') + ' ' + r.time;
+  }
+
+  async function loadConfig() {
+    if (location.protocol === 'file:') return { ok: false, error: 'errFile' };
+    try {
+      const res = await fetch('/api/config');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      if (!json.locations.length) {
+        return { ok: false, error: 'errNoLoc' };
+      }
+      const preselect = new URLSearchParams(location.search).get('loc') || '';
+      return { ok: true, locations: json.locations, staff: json.staff,
+               preselect: json.locations.some(l => l.id === preselect) ? preselect : '' };
+    } catch (err) {
+      return { ok: false, error: 'errLoad' };
+    }
+  }
+
+  async function init() {
+    BOOT = await loadConfig();
+    show($('loading'), false);
+    if (!BOOT.ok) {
+      setMsg($('invalidMsg'), BOOT.error);
+      show($('invalid'), true);
+      return;
+    }
+    const locSel = $('loc');
+    renderLocations();
+    if (BOOT.locations.length === 1) {
+      locSel.value = BOOT.locations[0].id;
+      show(locSel, false);
+      show($('locFixed'), true);
+    } else if (BOOT.preselect) {
+      locSel.value = BOOT.preselect;
+    }
+    locSel.addEventListener('change', updateSubmit);
+
+    const sel = $('name');
+    renderNames();
+    const remembered = storageGet('lastName');
+    if (remembered && BOOT.staff.some(s => s.name === remembered)) sel.value = remembered;
+    sel.addEventListener('change', updateSubmit);
+
+    $('startBtn').addEventListener('click', startCamera);
+    $('captureBtn').addEventListener('click', captureFrame);
+    $('retakeBtn').addEventListener('click', retake);
+    $('fileInput').addEventListener('change', onFile);
+    $('submitBtn').addEventListener('click', submit);
+    show($('form'), true);
+  }
+
+  function addOption(sel, value, text) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = text;
+    sel.appendChild(o);
+  }
+
+  function setPhotoError(key) {
+    setMsg($('photoError'), key);
+  }
+
+  async function startCamera() {
+    setPhotoError('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      useFallback(true);
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      $('video').srcObject = stream;
+      show($('startBtn'), false);
+      show($('cameraView'), true);
+    } catch (err) {
+      // Camera blocked in this frame or permission denied — use the phone's camera app instead.
+      useFallback(false);
+    }
+  }
+
+  function useFallback(openNow) {
+    usingFallback = true;
+    show($('startBtn'), false);
+    show($('fallbackView'), true);
+    if (openNow) $('fileInput').click();
+  }
+
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+
+  function toJpeg(source, w, h) {
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  }
+
+  function captureFrame() {
+    const v = $('video');
+    if (!v.videoWidth) return;
+    setPhoto(toJpeg(v, v.videoWidth, v.videoHeight));
+    stopCamera();
+    show($('cameraView'), false);
+  }
+
+  function onFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { setPhotoError('errNotPhoto'); return; }
+    if (Date.now() - file.lastModified > MAX_FILE_AGE_MS) {
+      setPhotoError('errOldPhoto');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      setPhoto(toJpeg(img, img.naturalWidth, img.naturalHeight));
+      URL.revokeObjectURL(url);
+      show($('fallbackView'), false);
+    };
+    img.onerror = () => { setPhotoError('errReadPhoto'); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  function setPhoto(dataUrl) {
+    setPhotoError('');
+    photoData = dataUrl;
+    $('preview').src = dataUrl;
+    show($('previewView'), true);
+    updateSubmit();
+  }
+
+  function retake() {
+    photoData = null;
+    show($('previewView'), false);
+    updateSubmit();
+    if (usingFallback) {
+      show($('fallbackView'), true);
+    } else {
+      startCamera();
+    }
+  }
+
+  function updateSubmit() {
+    $('submitBtn').disabled = !($('loc').value && $('name').value && photoData);
+  }
+
+  function setBusy(on) {
+    busy = on;
+    $('submitBtn').disabled = on;
+    show($('submitSpin'), on);
+    $('submitText').textContent = t(on ? 'submitting' : 'submit');
+  }
+
+  function submit() {
+    const name = $('name').value;
+    const locId = $('loc').value;
+    if (!locId || !name || !photoData) return;
+    setMsg($('submitError'), '');
+    setBusy(true);
+    fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, locId: locId, image: photoData }),
+    })
+      .then(async r => {
+        const json = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(json.error || '');
+        return json;
+      })
+      .then(res => {
+        storageSet('lastName', name);
+        lastResult = Object.assign({ locId: locId }, res);
+        renderSuccess();
+        show($('okWarn'), !!res.duplicate);
+        show($('form'), false);
+        show($('success'), true);
+      })
+      .catch(err => {
+        setBusy(false);
+        updateSubmit();
+        setMsg($('submitError'), err instanceof TypeError // fetch network failure
+          ? 'errNoNet' : SERVER_ERRORS[err.message] || 'errGeneric');
+      });
+  }
+
+  applyLang();
+  init();
+</script>
+</body>
+</html>

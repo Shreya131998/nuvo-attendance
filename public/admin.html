@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cleaning Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #ffffff; --text: #1d2430; --muted: #667085; --border: #e3e7ec;
+      --primary: #1769e0; --primary-soft: #eaf2fe; --ok: #12a150; --ok-bg: #ecfdf3; --err: #d92d20; --err-bg: #fef3f2;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 18px;
+      box-shadow: 0 1px 3px rgba(16,24,40,.08); margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); }
+    input[type=password], input[type=date], input[type=text] { font: inherit; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; background: #fff; color: var(--text); }
+    .btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 14px;
+      background: var(--primary); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; white-space: nowrap; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn.ghost { background: #eef2f7; color: var(--text); }
+    .btn.danger { background: var(--err-bg); color: var(--err); }
+    .btn.sm { padding: 6px 12px; font-size: 14px; }
+    .error { color: var(--err); margin-top: 10px; }
+
+    /* Login */
+    .login-wrap { padding: 16px; }
+    .login { max-width: 340px; margin: 12vh auto; text-align: center; }
+    .login input { width: 100%; margin: 14px 0; text-align: center; font-size: 20px; letter-spacing: .3em; }
+    .login .btn { width: 100%; padding: 12px; }
+
+    /* Layout: sidebar + content */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 230px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
+      padding: 20px 12px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px; }
+    .brand { font-weight: 700; font-size: 17px; padding: 4px 12px 18px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px;
+      background: none; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; text-align: left; white-space: nowrap; }
+    .nav-item:hover { background: #f2f4f7; color: var(--text); }
+    .nav-item.active { background: var(--primary-soft); color: var(--primary); }
+    .nav-item .ic { width: 20px; text-align: center; }
+    .sidebar .spacer { flex: 1; }
+    .content { flex: 1; min-width: 0; padding: 20px; }
+    .content-inner { max-width: 1100px; margin: 0 auto; }
+    @media (max-width: 860px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: auto; height: auto; flex-direction: row; overflow-x: auto; padding: 8px;
+        border-right: 0; border-bottom: 1px solid var(--border); z-index: 5; }
+      .brand, .sidebar .spacer { display: none; }
+      .nav-item { width: auto; }
+      .content { padding: 16px; }
+    }
+
+    /* Page header */
+    .page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 16px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 3px rgba(16,24,40,.08); }
+    .stat .v { font-size: 28px; font-weight: 700; }
+    .stat .k { color: var(--muted); font-size: 13px; }
+    .bar { height: 6px; background: #eef2f7; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--ok); }
+
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 1000px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+    .locs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .loc { border-radius: 10px; padding: 12px; border: 1px solid; }
+    .loc.ok { background: var(--ok-bg); border-color: #abefc6; }
+    .loc.pending { background: var(--err-bg); border-color: #fecdca; }
+    .loc .t { font-weight: 600; }
+    .loc .s { font-size: 13px; margin-top: 4px; }
+    .loc.ok .s { color: #067647; } .loc.pending .s { color: var(--err); }
+
+    .list { list-style: none; margin: 0; padding: 0; }
+    .list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .list li:last-child { border-bottom: 0; }
+    .list li > div { min-width: 0; overflow-wrap: anywhere; }
+    .pill { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+    .pill.ok { background: var(--ok-bg); color: #067647; }
+    .pill.no { background: var(--err-bg); color: var(--err); }
+
+    .chart { display: flex; align-items: flex-end; gap: 10px; height: 160px; padding-top: 10px; }
+    .chart .col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .chart .b { width: 100%; max-width: 44px; background: var(--primary); border-radius: 6px 6px 0 0; min-height: 2px; }
+    .chart .n { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .chart .l { font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; max-width: 100%; overflow: hidden; }
+
+    /* Entries */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .thumb { width: 64px; height: 64px; border-radius: 8px; background: #eef2f7; object-fit: cover; cursor: pointer; display: block; }
+
+    /* Manage (workers / locations) */
+    .add-form { display: flex; gap: 8px; }
+    .add-form input { flex: 1; min-width: 0; }
+    .add-form.stack { flex-direction: column; align-items: stretch; gap: 12px; }
+    .add-form.stack .btn { align-self: flex-start; }
+    .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .field input { width: 100%; }
+    .row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .msg { margin-top: 10px; font-size: 14px; padding: 8px 12px; border-radius: 8px; }
+    .msg.ok { background: var(--ok-bg); color: #067647; }
+    .msg.err { background: var(--err-bg); color: var(--err); }
+    .count { color: var(--muted); font-weight: 400; }
+
+    /* Lightbox */
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center;
+      justify-content: center; padding: 16px; z-index: 10; flex-direction: column; gap: 10px; }
+    .lightbox img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
+    .lightbox .cap { color: #fff; font-size: 14px; text-align: center; }
+
+    /* QR */
+    .qr-single { max-width: 360px; margin: 0 auto; padding: 24px; }
+    .qr-card { border: 1px dashed #c4cbd4; border-radius: 10px; text-align: center; background: #fff; break-inside: avoid; }
+    .qr-card .qr { display: flex; justify-content: center; margin: 10px 0; }
+    .qr-card .n { font-weight: 700; font-size: 16px; }
+    .qr-card .i { font-size: 12px; color: var(--muted); word-break: break-all; }
+
+    @media print {
+      body { background: #fff; }
+      .sidebar, .page-head, .no-print, section:not(#qr) { display: none !important; }
+      #qr { display: block !important; }
+      .card { box-shadow: none; padding: 0; }
+      .qr-single { margin-top: 15vh; border-width: 2px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginView" class="login-wrap hidden">
+  <div class="card login">
+    <h1>🧹 Cleaning Dashboard</h1>
+    <p class="muted">Enter admin PIN</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password">
+    <button id="loginBtn" class="btn">Open dashboard</button>
+    <div id="loginError" class="error hidden"></div>
+  </div>
+</div>
+
+<div id="mainView" class="layout hidden">
+  <nav class="sidebar">
+    <div class="brand">🧹 Cleaning Admin</div>
+    <button class="nav-item active" data-section="overview"><span class="ic">📊</span>Overview</button>
+    <button class="nav-item" data-section="entries"><span class="ic">📷</span>Entries &amp; Photos</button>
+    <button class="nav-item" data-section="workers"><span class="ic">👷</span>Workers</button>
+    <button class="nav-item" data-section="locations"><span class="ic">🚻</span>Locations</button>
+    <button class="nav-item" data-section="qr"><span class="ic">🔳</span>QR Code</button>
+    <div class="spacer"></div>
+    <button class="nav-item" id="logoutBtn"><span class="ic">↩</span>Log out</button>
+  </nav>
+
+  <main class="content">
+    <div class="content-inner">
+      <div class="page-head">
+        <div>
+          <h1 id="pageTitle">Overview</h1>
+          <div class="muted" id="subtitle"></div>
+        </div>
+        <div class="controls" id="dateControls">
+          <input id="date" type="date">
+          <button id="todayBtn" class="btn ghost">Today</button>
+          <button id="refreshBtn" class="btn ghost">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div id="loadError" class="card error hidden"></div>
+
+      <section id="overview">
+        <div class="stats">
+          <div class="stat"><div class="k">Locations cleaned</div><div class="v" id="sLocs">–</div><div class="bar"><i id="sLocsBar" style="width:0"></i></div></div>
+          <div class="stat"><div class="k">Workers who did their job</div><div class="v" id="sStaff">–</div><div class="bar"><i id="sStaffBar" style="width:0"></i></div></div>
+          <div class="stat"><div class="k">Total submissions</div><div class="v" id="sSubs">–</div></div>
+          <div class="stat"><div class="k">Last submission</div><div class="v" id="sLast">–</div></div>
+        </div>
+
+        <div class="card">
+          <h2>Locations</h2>
+          <div class="locs" id="locGrid"></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>Workers</h2>
+            <ul class="list" id="staffList"></ul>
+          </div>
+          <div class="card">
+            <h2>Last 7 days — locations cleaned</h2>
+            <div class="chart" id="chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="entries" class="hidden">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <h2 style="margin:0">Entries</h2>
+            <div class="controls">
+              <button id="csvBtn" class="btn ghost">⬇ Export CSV</button>
+              <a id="sheetLink" class="btn ghost" target="_blank" rel="noopener">Open Google Sheet</a>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Name</th><th>Location</th><th>Photo</th></tr></thead>
+              <tbody id="entryRows"></tbody>
+            </table>
+          </div>
+          <p id="noEntries" class="muted hidden">No submissions for this date.</p>
+        </div>
+      </section>
+
+      <section id="workers" class="hidden">
+        <div class="card">
+          <h2>Add worker</h2>
+          <form id="workerForm" class="add-form stack">
+            <div class="field">
+              <label for="workerInput">Name in English</label>
+              <input id="workerInput" type="text" maxlength="60" placeholder="Worker's full name, e.g. Ramesh Kumar" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="workerHiInput">Name in Hindi <span id="workerHiStatus" class="muted" style="font-weight:400"></span></label>
+              <input id="workerHiInput" type="text" maxlength="60" lang="hi" placeholder="Fills in automatically — you can edit it" autocomplete="off">
+            </div>
+            <button class="btn" type="submit">+ Add</button>
+          </form>
+          <div id="workerMsg" class="msg hidden"></div>
+        </div>
+        <div class="card">
+          <h2>Workers <span class="count" id="workerCount"></span></h2>
+          <ul class="list" id="workerList"><li class="muted">Loading…</li></ul>
+          <p class="muted" style="font-size:13px;margin:12px 0 0">Workers see the Hindi name on the form (English if no Hindi name is set). Removing a worker hides them from the form; their past attendance stays in the sheet.</p>
+        </div>
+      </section>
+
+      <section id="locations" class="hidden">
+        <div class="card">
+          <h2>Add location</h2>
+          <form id="locationForm" class="add-form stack">
+            <div class="field">
+              <label for="locationInput">Name in English</label>
+              <input id="locationInput" type="text" maxlength="80" placeholder="e.g. Second Floor - Ladies Toilet" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="locationHiInput">Name in Hindi <span id="locationHiStatus" class="muted" style="font-weight:400"></span></label>
+              <input id="locationHiInput" type="text" maxlength="80" lang="hi" placeholder="Fills in automatically — you can edit it" autocomplete="off">
+            </div>
+            <button class="btn" type="submit">+ Add</button>
+          </form>
+          <div id="locationMsg" class="msg hidden"></div>
+        </div>
+        <div class="card">
+          <h2>Locations <span class="count" id="locationCount"></span></h2>
+          <ul class="list" id="locationList"><li class="muted">Loading…</li></ul>
+          <p class="muted" style="font-size:13px;margin:12px 0 0">Workers see the Hindi name on the form (English if no Hindi name is set). The same QR code works for every location, so you don't need to reprint after adding one.</p>
+        </div>
+      </section>
+
+      <section id="qr" class="hidden">
+        <div class="card">
+          <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+            <p class="muted" style="margin:0">One QR code works for every toilet. Print copies and stick them up. Workers choose the toilet on the form.</p>
+            <button class="btn" onclick="window.print()">🖨 Print</button>
+          </div>
+          <div class="qr-card qr-single">
+            <div class="n" style="font-size:22px">🧹 Cleaning Attendance</div>
+            <div class="muted">Scan with your phone camera after cleaning</div>
+            <div class="qr" id="qrBox"></div>
+            <div class="i" id="qrUrl"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="lightbox" class="lightbox hidden">
+  <img id="lbImg" alt="">
+  <div class="cap" id="lbCap"></div>
+  <button class="btn ghost" id="lbClose">Close</button>
+</div>
+
+<script>
+  const APP_URL = location.origin + '/';
+  const AUTO_REFRESH_MS = 60 * 1000;
+  const SECTIONS = { overview: 'Overview', entries: 'Entries & Photos', workers: 'Workers', locations: 'Locations', qr: 'QR Code' };
+  const DATED_SECTIONS = ['overview', 'entries'];
+
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => el.classList.toggle('hidden', !on);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let data = null;
+  let refreshTimer = null;
+  let current = 'overview';
+
+  class AuthError extends Error {}
+
+  async function api(path, options) {
+    const res = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, options));
+    const json = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new AuthError(json.error || 'Please log in.');
+    if (!res.ok) throw new Error(json.error || 'Request failed (' + res.status + ')');
+    return json;
+  }
+
+  // ---------- Login ----------
+  function showLogin(msg) {
+    clearTimeout(refreshTimer);
+    show($('mainView'), false);
+    show($('loginView'), true);
+    $('loginError').textContent = msg || '';
+    show($('loginError'), !!msg);
+    $('pin').focus();
+  }
+
+  async function login() {
+    show($('loginError'), false);
+    $('loginBtn').disabled = true;
+    try {
+      await api('/api/login', { method: 'POST', body: JSON.stringify({ pin: $('pin').value.trim() }) });
+      $('pin').value = '';
+      await load();
+    } catch (err) {
+      showLogin(err.message || 'Wrong PIN');
+    } finally {
+      $('loginBtn').disabled = false;
+    }
+  }
+
+  $('loginBtn').onclick = login;
+  $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  $('logoutBtn').onclick = async () => {
+    try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+    data = null;
+    showLogin('');
+  };
+
+  // ---------- Sidebar navigation ----------
+  function showSection(id) {
+    if (!SECTIONS[id]) id = 'overview';
+    current = id;
+    document.querySelectorAll('.nav-item[data-section]').forEach(b => b.classList.toggle('active', b.dataset.section === id));
+    Object.keys(SECTIONS).forEach(s => show($(s), s === id));
+    $('pageTitle').textContent = SECTIONS[id];
+    show($('dateControls'), DATED_SECTIONS.includes(id));
+    show($('subtitle'), DATED_SECTIONS.includes(id));
+    if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+    if (id === 'workers') workers.load();
+    if (id === 'locations') locations.load();
+  }
+  document.querySelectorAll('.nav-item[data-section]').forEach(b => { b.onclick = () => showSection(b.dataset.section); });
+  window.addEventListener('hashchange', () => { if (data && location.hash.slice(1) !== current) showSection(location.hash.slice(1)); });
+
+  // ---------- Dashboard data ----------
+  async function load() {
+    show($('loadError'), false);
+    $('refreshBtn').disabled = true;
+    try {
+      data = await api('/api/dashboard?date=' + encodeURIComponent($('date').value || ''));
+      const firstShow = $('mainView').classList.contains('hidden');
+      show($('loginView'), false);
+      show($('mainView'), true);
+      $('date').value = data.date;
+      $('date').max = data.today;
+      render();
+      if (firstShow) showSection(location.hash.slice(1));
+    } catch (err) {
+      if (err instanceof AuthError) return showLogin(data ? 'Session expired. Please log in again.' : '');
+      $('loadError').textContent = err instanceof TypeError // fetch network failure
+        ? 'Could not reach the server. Check your internet connection and that the app is deployed.'
+        : 'Could not load data: ' + err.message;
+      show($('loadError'), true);
+      show($('mainView'), true);
+    } finally {
+      $('refreshBtn').disabled = false;
+    }
+    clearTimeout(refreshTimer);
+    if (data && data.date === data.today) refreshTimer = setTimeout(load, AUTO_REFRESH_MS);
+  }
+
+  $('date').onchange = load;
+  $('refreshBtn').onclick = load;
+  $('todayBtn').onclick = () => { $('date').value = ''; load(); };
+
+  // ---------- Render ----------
+  function render() {
+    const d = data;
+    const isToday = d.date === d.today;
+    $('subtitle').textContent = (isToday ? 'Today, ' : '') + formatDate(d.date) + ' · updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const locsDone = d.locationStatus.filter(l => l.entries.length).length;
+    const staffDone = d.staffStatus.filter(s => s.entries.length).length;
+    $('sLocs').textContent = locsDone + ' / ' + d.locationStatus.length;
+    $('sLocsBar').style.width = pct(locsDone, d.locationStatus.length) + '%';
+    $('sStaff').textContent = staffDone + ' / ' + d.staffStatus.length;
+    $('sStaffBar').style.width = pct(staffDone, d.staffStatus.length) + '%';
+    $('sSubs').textContent = d.entries.length;
+    $('sLast').textContent = d.entries.length ? d.entries[d.entries.length - 1].time : '–';
+
+    $('locGrid').innerHTML = d.locationStatus.map(l => {
+      const ok = l.entries.length > 0;
+      const s = ok ? '✓ ' + l.entries.map(e => esc(e.name) + ' at ' + esc(e.time)).join(', ') : '✗ Not cleaned yet';
+      return '<div class="loc ' + (ok ? 'ok' : 'pending') + '"><div class="t">' + esc(l.name) + '</div><div class="s">' + s + '</div></div>';
+    }).join('') || '<p class="muted">No locations yet. Add some under <b>Locations</b>.</p>';
+
+    const staffSorted = d.staffStatus.slice().sort((a, b) => (a.entries.length > 0) - (b.entries.length > 0));
+    $('staffList').innerHTML = staffSorted.map(s => {
+      const ok = s.entries.length > 0;
+      const detail = ok ? s.entries.map(e => esc(e.locName) + ' (' + esc(e.time) + ')').join('<br>') : 'No submission';
+      return '<li><div><b>' + esc(s.name) + '</b><div class="muted" style="font-size:13px">' + detail + '</div></div>' +
+        '<span class="pill ' + (ok ? 'ok' : 'no') + '">' + (ok ? 'Done' : 'Not done') + '</span></li>';
+    }).join('') || '<li class="muted">No workers yet. Add some under <b>Workers</b>.</li>';
+
+    const max = Math.max(1, d.locationStatus.length, ...d.history.map(h => h.locationsCleaned));
+    $('chart').innerHTML = d.history.map(h =>
+      '<div class="col" title="' + esc(h.submissions) + ' submissions"><div class="n">' + h.locationsCleaned + '</div>' +
+      '<div class="b" style="height:' + (h.locationsCleaned / max * 100) + '%;' + (h.date === d.date ? '' : 'opacity:.45') + '"></div>' +
+      '<div class="l">' + esc(h.label) + '</div></div>').join('');
+
+    $('sheetLink').href = d.sheetUrl;
+    renderEntries();
+    renderQr();
+  }
+
+  function renderEntries() {
+    const rows = data.entries.slice().reverse();
+    show($('noEntries'), rows.length === 0);
+    $('entryRows').innerHTML = rows.map(e =>
+      '<tr><td>' + esc(e.time) + '</td><td>' + esc(e.name) + '</td><td>' + esc(e.locName) + '</td>' +
+      '<td><img class="thumb" loading="lazy" src="' + esc(e.thumbUrl) + '" data-full="' + esc(e.photoUrl) + '" data-cap="' +
+      esc(e.name + ' · ' + e.locName + ' · ' + e.time) + '" alt="photo"></td></tr>').join('');
+    document.querySelectorAll('#entryRows .thumb').forEach(img => {
+      img.onclick = () => openPhoto(img.dataset.full, img.dataset.cap);
+    });
+  }
+
+  function openPhoto(url, cap) {
+    $('lbImg').src = url;
+    $('lbCap').textContent = cap;
+    show($('lightbox'), true);
+  }
+  $('lbClose').onclick = () => show($('lightbox'), false);
+  $('lightbox').onclick = e => { if (e.target === $('lightbox')) show($('lightbox'), false); };
+
+  // One QR code for every toilet — workers pick the toilet on the form.
+  let qrRendered = false;
+  function renderQr() {
+    if (qrRendered) return;
+    qrRendered = true;
+    const box = $('qrBox');
+    if (window.QRCode) new QRCode(box, { text: APP_URL, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M });
+    else box.textContent = 'QR library failed to load — refresh the page.';
+    $('qrUrl').textContent = APP_URL;
+  }
+
+  // ---------- Workers & Locations (stored in the Staff / Locations sheet tabs) ----------
+  function manager(cfg) {
+    const el = name => $(cfg.prefix + name);
+    let msgTimer = null;
+
+    function flash(text, kind) {
+      const m = el('Msg');
+      m.textContent = text;
+      m.className = 'msg ' + kind;
+      clearTimeout(msgTimer);
+      if (kind === 'ok') msgTimer = setTimeout(() => show(m, false), 4000);
+    }
+
+    function fail(err) {
+      if (err instanceof AuthError) return showLogin('Session expired. Please log in again.');
+      flash(err instanceof TypeError ? 'Could not reach the server. Try again.' : err.message, 'err');
+    }
+
+    let items = [];
+
+    function render(list) {
+      items = list;
+      el('Count').textContent = '(' + items.length + ')';
+      el('List').innerHTML = items.map(item =>
+        '<li><div><b>' + esc(cfg.label(item)) + '</b>' + (item.active ? '' : ' <span class="pill no">Inactive</span>') +
+        (cfg.detail ? '<div class="muted" style="font-size:13px">' + esc(cfg.detail(item)) + '</div>' : '') + '</div>' +
+        '<div class="row-actions">' +
+        (cfg.edit ? '<button class="btn ghost sm" type="button" data-edit="' + esc(cfg.key(item)) + '">' + esc(cfg.edit.label) + '</button>' : '') +
+        '<button class="btn danger sm" type="button" data-key="' + esc(cfg.key(item)) + '" data-label="' + esc(cfg.label(item)) + '">Remove</button>' +
+        '</div></li>'
+      ).join('') || '<li class="muted">Nothing here yet. Add one above.</li>';
+      el('List').querySelectorAll('button[data-key]').forEach(b => { b.onclick = () => remove(b); });
+      el('List').querySelectorAll('button[data-edit]').forEach(b => { b.onclick = () => edit(b); });
+    }
+
+    async function edit(btn) {
+      const item = items.find(i => cfg.key(i) === btn.dataset.edit);
+      if (!item) return;
+      btn.disabled = true;
+      try {
+        const json = await cfg.edit.run(item);
+        if (json) {
+          render(json[cfg.listKey]);
+          flash(cfg.label(item) + ' updated.', 'ok');
+        }
+      } catch (err) {
+        fail(err);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function load() {
+      try {
+        render((await api(cfg.endpoint))[cfg.listKey]);
+      } catch (err) { fail(err); }
+    }
+
+    async function remove(btn) {
+      if (!confirm('Remove "' + btn.dataset.label + '"?')) return;
+      btn.disabled = true;
+      try {
+        const json = await api(cfg.endpoint + '?' + cfg.deleteParam + '=' + encodeURIComponent(btn.dataset.key), { method: 'DELETE' });
+        render(json[cfg.listKey]);
+        flash(btn.dataset.label + ' removed.', 'ok');
+        refreshDashboard();
+      } catch (err) {
+        btn.disabled = false;
+        fail(err);
+      }
+    }
+
+    el('Form').onsubmit = async e => {
+      e.preventDefault();
+      const input = el('Input');
+      const value = input.value.replace(/\s+/g, ' ').trim();
+      if (!value) return input.focus();
+      const btn = el('Form').querySelector('button');
+      btn.disabled = true;
+      try {
+        const body = Object.assign({ name: value }, cfg.extraFields ? cfg.extraFields() : {});
+        const json = await api(cfg.endpoint, { method: 'POST', body: JSON.stringify(body) });
+        input.value = '';
+        if (cfg.afterAdd) cfg.afterAdd();
+        render(json[cfg.listKey]);
+        flash(value + ' added.', 'ok');
+        refreshDashboard();
+      } catch (err) {
+        fail(err);
+      } finally {
+        btn.disabled = false;
+        input.focus();
+      }
+    };
+
+    return { load };
+  }
+
+  // Keep the overview numbers in step after adding/removing.
+  function refreshDashboard() { if (data) load(); }
+
+  // English → Hindi suggestion while the admin types into an "add" form.
+  // Stops once they type in the Hindi box themselves. Returns a reset function.
+  function hindiSuggest(prefix) {
+    const en = $(prefix + 'Input');
+    const hi = $(prefix + 'HiInput');
+    const status = $(prefix + 'HiStatus');
+    let timer = null;
+    let seq = 0;
+    let touched = false;
+
+    function reset() {
+      clearTimeout(timer);
+      seq++;
+      touched = false;
+      hi.value = '';
+      status.textContent = '';
+    }
+
+    hi.addEventListener('input', () => { touched = hi.value.trim() !== ''; });
+    en.addEventListener('input', () => {
+      clearTimeout(timer);
+      if (touched) return;
+      const text = en.value.replace(/\s+/g, ' ').trim();
+      if (!text) return reset();
+      timer = setTimeout(async () => {
+        const mine = ++seq;
+        status.textContent = '· translating…';
+        try {
+          const json = await api('/api/translate?text=' + encodeURIComponent(text));
+          if (mine !== seq || touched) return;
+          hi.value = json.hi;
+          status.textContent = json.hi ? '· auto-filled, edit if needed' : '· please type it';
+        } catch (err) {
+          if (mine === seq) status.textContent = '· please type it';
+        }
+      }, 600);
+    });
+    return reset;
+  }
+
+  const hindiDetail = item => item.nameHi ? 'हिंदी: ' + item.nameHi : 'No Hindi name yet';
+
+  const workers = manager({
+    prefix: 'worker', endpoint: '/api/staff', listKey: 'staff', deleteParam: 'name',
+    key: s => s.name, label: s => s.name, detail: hindiDetail,
+    extraFields: () => ({ nameHi: $('workerHiInput').value.trim() }),
+    afterAdd: hindiSuggest('worker'),
+    edit: {
+      label: '✎ Hindi',
+      run: async s => {
+        const nameHi = prompt('Hindi name for "' + s.name + '":', s.nameHi || '');
+        if (nameHi === null) return null;
+        return api('/api/staff', { method: 'PATCH', body: JSON.stringify({ name: s.name, nameHi: nameHi.trim() }) });
+      },
+    },
+  });
+  const locations = manager({
+    prefix: 'location', endpoint: '/api/locations', listKey: 'locations', deleteParam: 'id',
+    key: l => l.id, label: l => l.name,
+    detail: l => hindiDetail(l) + ' · ID: ' + l.id,
+    extraFields: () => ({ nameHi: $('locationHiInput').value.trim() }),
+    afterAdd: hindiSuggest('location'),
+    edit: {
+      label: '✎ Hindi',
+      run: async l => {
+        const nameHi = prompt('Hindi name for "' + l.name + '":', l.nameHi || '');
+        if (nameHi === null) return null;
+        return api('/api/locations', { method: 'PATCH', body: JSON.stringify({ id: l.id, nameHi: nameHi.trim() }) });
+      },
+    },
+  });
+
+  // ---------- CSV ----------
+  $('csvBtn').onclick = () => {
+    const rows = [['Date', 'Time', 'Name', 'Location ID', 'Location', 'Photo']].concat(
+      data.entries.map(e => [data.date, e.time, e.name, e.locId, e.locName, e.photoUrl]));
+    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'cleaning-' + data.date + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  // ---------- Helpers ----------
+  function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
+  function formatDate(s) {
+    const p = s.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  if (location.protocol === 'file:') {
+    // Opened by double-clicking the file: there is no /api server behind it.
+    $('loadError').textContent = 'This page was opened as a file, so it cannot reach the server. ' +
+      'Deploy the project to Vercel and open https://<your-app>.vercel.app/admin instead.';
+    show($('loadError'), true);
+    show($('mainView'), true);
+  } else {
+    // An existing session cookie skips the PIN screen.
+    load();
+  }
+</script>
+</body>
+</html>

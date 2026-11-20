@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #ffffff; --text: #1d2430; --muted: #667085;
+      --primary: #1769e0; --primary-dark: #1256b8; --ok: #12a150; --err: #d92d20;
+      --border: #e3e7ec; --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 480px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 20px;
+      box-shadow: 0 1px 3px rgba(16,24,40,.08); margin-bottom: 14px; }
+    .loc-label { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    h1 { font-size: 22px; margin: 4px 0 0; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    select { width: 100%; font-size: 17px; padding: 14px; border: 1px solid var(--border);
+      border-radius: 10px; background: #fff; color: var(--text); appearance: none;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+      border: 0; border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600;
+      cursor: pointer; background: var(--primary); color: #fff; }
+    .btn:active { background: var(--primary-dark); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.secondary { background: #eef2f7; color: var(--text); }
+    .btn.capture { width: 72px; height: 72px; border-radius: 50%; padding: 0; margin: 12px auto 0;
+      border: 5px solid #fff; box-shadow: 0 0 0 3px var(--primary); }
+    .row { display: flex; gap: 10px; margin-top: 10px; }
+    .row .btn { flex: 1; }
+    .camera-box { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
+    video, #preview { display: block; width: 100%; border-radius: 12px; }
+    .hint { font-size: 14px; color: var(--muted); margin-top: 8px; }
+    .error { background: #fef3f2; color: var(--err); border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
+    .warn { background: #fffaeb; color: #b54708; border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
+    .hidden { display: none !important; }
+    .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .done { text-align: center; padding: 36px 20px; }
+    .tick { width: 84px; height: 84px; border-radius: 50%; background: var(--ok); color: #fff;
+      font-size: 48px; line-height: 84px; margin: 0 auto 16px; }
+    .done h2 { margin: 0 0 6px; font-size: 24px; }
+    .done p { margin: 4px 0; color: var(--muted); }
+    .done strong { color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="invalid" class="card hidden">
+    <h1>Can't open form</h1>
+    <p id="invalidMsg" class="hint"></p>
+  </div>
+
+  <div id="form" class="hidden">
+    <div class="card">
+      <div class="loc-label">Cleaning attendance</div>
+      <h1>Mark your work</h1>
+    </div>
+
+    <div class="card">
+      <label for="loc">1. Which toilet did you clean?</label>
+      <select id="loc"><option value="">— Select toilet —</option></select>
+      <div id="locFixed" class="hidden" style="font-size:18px;font-weight:600"></div>
+    </div>
+
+    <div class="card">
+      <label for="name">2. Your name</label>
+      <select id="name"><option value="">— Select your name —</option></select>
+    </div>
+
+    <div class="card">
+      <label>3. Photo of the cleaned toilet</label>
+
+      <button id="startBtn" class="btn" type="button">📷 Take Photo</button>
+
+      <div id="cameraView" class="hidden">
+        <div class="camera-box"><video id="video" playsinline autoplay muted></video></div>
+        <button id="captureBtn" class="btn capture" type="button" aria-label="Capture photo"></button>
+        <p class="hint" style="text-align:center">Point at the cleaned toilet and tap the button</p>
+      </div>
+
+      <div id="fallbackView" class="hidden">
+        <label for="fileInput" class="btn">📷 Open Camera</label>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden">
+        <p class="hint">Your phone camera will open. Gallery photos are not accepted.</p>
+      </div>
+
+      <div id="previewView" class="hidden">
+        <img id="preview" alt="Captured photo">
+        <div class="row"><button id="retakeBtn" class="btn secondary" type="button">↺ Retake</button></div>
+      </div>
+
+      <div id="photoError" class="error hidden"></div>
+    </div>
+
+    <button id="submitBtn" class="btn" type="button" disabled>
+      <span id="submitSpin" class="spinner hidden"></span><span id="submitText">Submit</span>
+    </button>
+    <div id="submitError" class="error hidden"></div>
+  </div>
+
+  <div id="success" class="card done hidden">
+    <div class="tick">✓</div>
+    <h2>Thank you!</h2>
+    <p>Cleaning recorded for <strong id="okName"></strong></p>
+    <p><strong id="okLoc"></strong></p>
+    <p id="okTime"></p>
+    <div id="okWarn" class="warn hidden">You already submitted for this location in the last 30 minutes.</div>
+  </div>
+
+</div>
+
+<script>
+  const BOOT = <?!= bootstrap ?>;
+  const MAX_SIDE = 1280;
+  const JPEG_QUALITY = 0.7;
+  const MAX_FILE_AGE_MS = 2 * 60 * 1000;
+
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => el.classList.toggle('hidden', !on);
+  let photoData = null;
+  let stream = null;
+  let usingFallback = false;
+
+  function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function init() {
+    if (!BOOT.ok) {
+      $('invalidMsg').textContent = BOOT.error;
+      show($('invalid'), true);
+      return;
+    }
+    const locSel = $('loc');
+    BOOT.locations.forEach(l => addOption(locSel, l.id, l.name));
+    if (BOOT.locations.length === 1) {
+      locSel.value = BOOT.locations[0].id;
+      $('locFixed').textContent = BOOT.locations[0].name;
+      show(locSel, false);
+      show($('locFixed'), true);
+    } else if (BOOT.preselect) {
+      locSel.value = BOOT.preselect;
+    }
+    locSel.addEventListener('change', updateSubmit);
+
+    const sel = $('name');
+    BOOT.staff.forEach(n => addOption(sel, n, n));
+    const remembered = storageGet('lastName');
+    if (remembered && BOOT.staff.includes(remembered)) sel.value = remembered;
+    sel.addEventListener('change', updateSubmit);
+
+    $('startBtn').addEventListener('click', startCamera);
+    $('captureBtn').addEventListener('click', captureFrame);
+    $('retakeBtn').addEventListener('click', retake);
+    $('fileInput').addEventListener('change', onFile);
+    $('submitBtn').addEventListener('click', submit);
+    show($('form'), true);
+  }
+
+  function addOption(sel, value, text) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = text;
+    sel.appendChild(o);
+  }
+
+  function setPhotoError(msg) {
+    $('photoError').textContent = msg || '';
+    show($('photoError'), !!msg);
+  }
+
+  async function startCamera() {
+    setPhotoError('');
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      useFallback(true);
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      $('video').srcObject = stream;
+      show($('startBtn'), false);
+      show($('cameraView'), true);
+    } catch (err) {
+      // Camera blocked in this frame or permission denied — use the phone's camera app instead.
+      useFallback(false);
+    }
+  }
+
+  function useFallback(openNow) {
+    usingFallback = true;
+    show($('startBtn'), false);
+    show($('fallbackView'), true);
+    if (openNow) $('fileInput').click();
+  }
+
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+
+  function toJpeg(source, w, h) {
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  }
+
+  function captureFrame() {
+    const v = $('video');
+    if (!v.videoWidth) return;
+    setPhoto(toJpeg(v, v.videoWidth, v.videoHeight));
+    stopCamera();
+    show($('cameraView'), false);
+  }
+
+  function onFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { setPhotoError('Please take a photo.'); return; }
+    if (Date.now() - file.lastModified > MAX_FILE_AGE_MS) {
+      setPhotoError('This looks like an old photo from the gallery. Please take a new photo with the camera.');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      setPhoto(toJpeg(img, img.naturalWidth, img.naturalHeight));
+      URL.revokeObjectURL(url);
+      show($('fallbackView'), false);
+    };
+    img.onerror = () => { setPhotoError('Could not read the photo. Please try again.'); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  function setPhoto(dataUrl) {
+    setPhotoError('');
+    photoData = dataUrl;
+    $('preview').src = dataUrl;
+    show($('previewView'), true);
+    updateSubmit();
+  }
+
+  function retake() {
+    photoData = null;
+    show($('previewView'), false);
+    updateSubmit();
+    if (usingFallback) {
+      show($('fallbackView'), true);
+    } else {
+      startCamera();
+    }
+  }
+
+  function updateSubmit() {
+    $('submitBtn').disabled = !($('loc').value && $('name').value && photoData);
+  }
+
+  function setBusy(busy) {
+    $('submitBtn').disabled = busy;
+    show($('submitSpin'), busy);
+    $('submitText').textContent = busy ? 'Submitting…' : 'Submit';
+  }
+
+  function submit() {
+    const name = $('name').value;
+    const locId = $('loc').value;
+    if (!locId || !name || !photoData) return;
+    show($('submitError'), false);
+    setBusy(true);
+    google.script.run
+      .withSuccessHandler(res => {
+        storageSet('lastName', name);
+        $('okName').textContent = res.name;
+        $('okLoc').textContent = res.locName;
+        $('okTime').textContent = res.date + ' at ' + res.time;
+        show($('okWarn'), !!res.duplicate);
+        show($('form'), false);
+        show($('success'), true);
+      })
+      .withFailureHandler(err => {
+        setBusy(false);
+        updateSubmit();
+        $('submitError').textContent = (err && err.message) || 'Something went wrong. Please try again.';
+        show($('submitError'), true);
+      })
+      .submitAttendance({ name: name, locId: locId, image: photoData });
+  }
+
+  init();
+</script>
+</body>
+</html>

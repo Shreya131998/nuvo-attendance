@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6f8; --card: #ffffff; --text: #1d2430; --muted: #667085; --border: #e3e7ec;
+      --primary: #1769e0; --ok: #12a150; --ok-bg: #ecfdf3; --err: #d92d20; --err-bg: #fef3f2;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 18px;
+      box-shadow: 0 1px 3px rgba(16,24,40,.08); margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); }
+    input[type=password], input[type=date] { font: inherit; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; background: #fff; color: var(--text); }
+    .btn { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 14px;
+      background: var(--primary); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn.ghost { background: #eef2f7; color: var(--text); }
+    .error { color: var(--err); margin-top: 10px; }
+
+    /* Login */
+    .login { max-width: 340px; margin: 12vh auto; text-align: center; }
+    .login input { width: 100%; margin: 14px 0; text-align: center; font-size: 20px; letter-spacing: .3em; }
+    .login .btn { width: 100%; padding: 12px; }
+
+    /* Header */
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; margin-bottom: 14px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tab { background: none; border: 0; font: inherit; font-weight: 600; padding: 10px 14px; color: var(--muted);
+      cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 3px rgba(16,24,40,.08); }
+    .stat .v { font-size: 28px; font-weight: 700; }
+    .stat .k { color: var(--muted); font-size: 13px; }
+    .bar { height: 6px; background: #eef2f7; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--ok); }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .locs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .loc { border-radius: 10px; padding: 12px; border: 1px solid; }
+    .loc.ok { background: var(--ok-bg); border-color: #abefc6; }
+    .loc.pending { background: var(--err-bg); border-color: #fecdca; }
+    .loc .t { font-weight: 600; }
+    .loc .s { font-size: 13px; margin-top: 4px; }
+    .loc.ok .s { color: #067647; } .loc.pending .s { color: var(--err); }
+
+    .list { list-style: none; margin: 0; padding: 0; }
+    .list li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .list li:last-child { border-bottom: 0; }
+    .pill { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; white-space: nowrap; align-self: flex-start; }
+    .pill.ok { background: var(--ok-bg); color: #067647; }
+    .pill.no { background: var(--err-bg); color: var(--err); }
+
+    .chart { display: flex; align-items: flex-end; gap: 10px; height: 160px; padding-top: 10px; }
+    .chart .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .chart .b { width: 100%; max-width: 44px; background: var(--primary); border-radius: 6px 6px 0 0; min-height: 2px; }
+    .chart .n { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .chart .l { font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+
+    /* Entries */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .thumb { width: 64px; height: 64px; border-radius: 8px; background: #eef2f7; object-fit: cover; cursor: pointer; display: block; }
+
+    /* Lightbox */
+    .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center;
+      justify-content: center; padding: 16px; z-index: 10; flex-direction: column; gap: 10px; }
+    .lightbox img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
+    .lightbox .cap { color: #fff; font-size: 14px; text-align: center; }
+
+    /* QR */
+    .qr-single { max-width: 360px; margin: 0 auto; padding: 24px; }
+    .qr-card { border: 1px dashed #c4cbd4; border-radius: 10px; padding: 16px; text-align: center; background: #fff; break-inside: avoid; }
+    .qr-card .qr { display: flex; justify-content: center; margin: 10px 0; }
+    .qr-card .n { font-weight: 700; font-size: 16px; }
+    .qr-card .i { font-size: 12px; color: var(--muted); word-break: break-all; }
+
+    @media print {
+      body { background: #fff; }
+      header, .tabs, .no-print, #overview, #entries { display: none !important; }
+      #qr { display: block !important; }
+      .card { box-shadow: none; padding: 0; }
+      .qr-single { margin-top: 15vh; border-width: 2px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginView" class="wrap">
+  <div class="card login">
+    <h1>🧹 Cleaning Dashboard</h1>
+    <p class="muted">Enter admin PIN</p>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password">
+    <button id="loginBtn" class="btn">Open dashboard</button>
+    <div id="loginError" class="error hidden"></div>
+  </div>
+</div>
+
+<div id="mainView" class="wrap hidden">
+  <header>
+    <div>
+      <h1>🧹 Cleaning Dashboard</h1>
+      <div class="muted" id="subtitle"></div>
+    </div>
+    <div class="controls">
+      <input id="date" type="date">
+      <button id="todayBtn" class="btn ghost">Today</button>
+      <button id="refreshBtn" class="btn ghost">↻ Refresh</button>
+      <button id="logoutBtn" class="btn ghost">Log out</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="entries">Entries &amp; Photos</button>
+    <button class="tab" data-tab="qr">QR Code</button>
+  </nav>
+
+  <div id="loadError" class="card error hidden"></div>
+
+  <section id="overview">
+    <div class="stats">
+      <div class="stat"><div class="k">Locations cleaned</div><div class="v" id="sLocs">–</div><div class="bar"><i id="sLocsBar" style="width:0"></i></div></div>
+      <div class="stat"><div class="k">Staff who did their job</div><div class="v" id="sStaff">–</div><div class="bar"><i id="sStaffBar" style="width:0"></i></div></div>
+      <div class="stat"><div class="k">Total submissions</div><div class="v" id="sSubs">–</div></div>
+      <div class="stat"><div class="k">Last submission</div><div class="v" id="sLast">–</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Locations</h2>
+      <div class="locs" id="locGrid"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Staff</h2>
+        <ul class="list" id="staffList"></ul>
+      </div>
+      <div class="card">
+        <h2>Last 7 days — locations cleaned</h2>
+        <div class="chart" id="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="entries" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <h2 style="margin:0">Entries</h2>
+        <div class="controls">
+          <button id="csvBtn" class="btn ghost">⬇ Export CSV</button>
+          <a id="sheetLink" class="btn ghost" target="_blank" rel="noopener">Open Google Sheet</a>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Name</th><th>Location</th><th>Photo</th></tr></thead>
+          <tbody id="entryRows"></tbody>
+        </table>
+      </div>
+      <p id="noEntries" class="muted hidden">No submissions for this date.</p>
+    </div>
+  </section>
+
+  <section id="qr" class="hidden">
+    <div class="card">
+      <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <p class="muted" style="margin:0">One QR code works for every toilet. Print copies and stick them up. Workers choose the toilet on the form.</p>
+        <button class="btn" onclick="window.print()">🖨 Print</button>
+      </div>
+      <div class="qr-card qr-single">
+        <div class="n" style="font-size:22px">🧹 Cleaning Attendance</div>
+        <div class="muted">Scan with your phone camera after cleaning</div>
+        <div class="qr" id="qrBox"></div>
+        <div class="i" id="qrUrl"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="lightbox" class="lightbox hidden">
+  <img id="lbImg" alt="">
+  <div class="cap" id="lbCap"></div>
+  <button class="btn ghost" id="lbClose">Close</button>
+</div>
+
+<script>
+  const APP_URL = <?!= JSON.stringify(appUrl).replace(/</g, '\\u003c') ?>;
+  const AUTO_REFRESH_MS = 60 * 1000;
+
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => el.classList.toggle('hidden', !on);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let pin = null;
+  let data = null;
+  let refreshTimer = null;
+  let thumbQueue = [];
+  let thumbActive = 0;
+  const thumbCache = {};
+
+  function sessGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function sessSet(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} }
+
+  function call(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+
+  // ---------- Login ----------
+  async function login(p) {
+    show($('loginError'), false);
+    $('loginBtn').disabled = true;
+    try {
+      await call('verifyPin', p);
+      pin = p;
+      sessSet('pin', p);
+      show($('loginView'), false);
+      show($('mainView'), true);
+      load();
+    } catch (err) {
+      sessSet('pin', null);
+      $('loginError').textContent = err.message || 'Wrong PIN';
+      show($('loginError'), true);
+    } finally {
+      $('loginBtn').disabled = false;
+    }
+  }
+
+  $('loginBtn').onclick = () => login($('pin').value.trim());
+  $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+  $('logoutBtn').onclick = () => { sessSet('pin', null); location.reload(); };
+
+  // ---------- Data ----------
+  async function load() {
+    show($('loadError'), false);
+    $('refreshBtn').disabled = true;
+    try {
+      data = await call('getDashboard', pin, $('date').value || '');
+      $('date').value = data.date;
+      $('date').max = data.today;
+      render();
+    } catch (err) {
+      $('loadError').textContent = 'Could not load data: ' + (err.message || err);
+      show($('loadError'), true);
+    } finally {
+      $('refreshBtn').disabled = false;
+    }
+    clearTimeout(refreshTimer);
+    if (data && data.date === data.today) refreshTimer = setTimeout(load, AUTO_REFRESH_MS);
+  }
+
+  $('date').onchange = load;
+  $('refreshBtn').onclick = load;
+  $('todayBtn').onclick = () => { $('date').value = ''; load(); };
+
+  // ---------- Render ----------
+  function render() {
+    const d = data;
+    const isToday = d.date === d.today;
+    $('subtitle').textContent = (isToday ? 'Today, ' : '') + formatDate(d.date) + ' · updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const locsDone = d.locationStatus.filter(l => l.entries.length).length;
+    const staffDone = d.staffStatus.filter(s => s.entries.length).length;
+    $('sLocs').textContent = locsDone + ' / ' + d.locationStatus.length;
+    $('sLocsBar').style.width = pct(locsDone, d.locationStatus.length) + '%';
+    $('sStaff').textContent = staffDone + ' / ' + d.staffStatus.length;
+    $('sStaffBar').style.width = pct(staffDone, d.staffStatus.length) + '%';
+    $('sSubs').textContent = d.entries.length;
+    $('sLast').textContent = d.entries.length ? d.entries[d.entries.length - 1].time : '–';
+
+    $('locGrid').innerHTML = d.locationStatus.map(l => {
+      const ok = l.entries.length > 0;
+      const s = ok ? '✓ ' + l.entries.map(e => esc(e.name) + ' at ' + esc(e.time)).join(', ') : '✗ Not cleaned yet';
+      return '<div class="loc ' + (ok ? 'ok' : 'pending') + '"><div class="t">' + esc(l.name) + '</div><div class="s">' + s + '</div></div>';
+    }).join('') || '<p class="muted">No active locations. Add some in the Locations sheet.</p>';
+
+    const staffSorted = d.staffStatus.slice().sort((a, b) => (a.entries.length > 0) - (b.entries.length > 0));
+    $('staffList').innerHTML = staffSorted.map(s => {
+      const ok = s.entries.length > 0;
+      const detail = ok ? s.entries.map(e => esc(e.locName) + ' (' + esc(e.time) + ')').join('<br>') : 'No submission';
+      return '<li><div><b>' + esc(s.name) + '</b><div class="muted" style="font-size:13px">' + detail + '</div></div>' +
+        '<span class="pill ' + (ok ? 'ok' : 'no') + '">' + (ok ? 'Done' : 'Not done') + '</span></li>';
+    }).join('') || '<li class="muted">No active staff. Add some in the Staff sheet.</li>';
+
+    const max = Math.max(1, d.locationStatus.length, ...d.history.map(h => h.locationsCleaned));
+    $('chart').innerHTML = d.history.map(h =>
+      '<div class="col" title="' + esc(h.submissions) + ' submissions"><div class="n">' + h.locationsCleaned + '</div>' +
+      '<div class="b" style="height:' + (h.locationsCleaned / max * 100) + '%;' + (h.date === d.date ? '' : 'opacity:.45') + '"></div>' +
+      '<div class="l">' + esc(h.label) + '</div></div>').join('');
+
+    $('sheetLink').href = d.sheetUrl;
+    renderEntries();
+    renderQr();
+  }
+
+  function renderEntries() {
+    thumbQueue = [];
+    const rows = data.entries.slice().reverse();
+    show($('noEntries'), rows.length === 0);
+    $('entryRows').innerHTML = rows.map(e =>
+      '<tr><td>' + esc(e.time) + '</td><td>' + esc(e.name) + '</td><td>' + esc(e.locName) + '</td>' +
+      '<td><img class="thumb" data-id="' + esc(e.fileId) + '" data-cap="' + esc(e.name + ' · ' + e.locName + ' · ' + e.time) + '" alt="photo"></td></tr>').join('');
+    document.querySelectorAll('#entryRows .thumb').forEach(img => {
+      img.onclick = () => openPhoto(img.dataset.id, img.dataset.cap);
+      if (thumbCache[img.dataset.id]) img.src = thumbCache[img.dataset.id];
+      else thumbQueue.push(img);
+    });
+    pumpThumbs();
+  }
+
+  function pumpThumbs() {
+    while (thumbActive < 3 && thumbQueue.length) {
+      const img = thumbQueue.shift();
+      thumbActive++;
+      call('getPhoto', pin, img.dataset.id, true)
+        .then(src => { thumbCache[img.dataset.id] = src; img.src = src; })
+        .catch(() => { img.alt = 'n/a'; })
+        .finally(() => { thumbActive--; pumpThumbs(); });
+    }
+  }
+
+  async function openPhoto(id, cap) {
+    $('lbImg').src = thumbCache[id] || '';
+    $('lbCap').textContent = cap + ' — loading full photo…';
+    show($('lightbox'), true);
+    try {
+      $('lbImg').src = await call('getPhoto', pin, id, false);
+      $('lbCap').textContent = cap;
+    } catch (err) {
+      $('lbCap').textContent = cap + ' — could not load photo';
+    }
+  }
+  $('lbClose').onclick = () => show($('lightbox'), false);
+  $('lightbox').onclick = e => { if (e.target === $('lightbox')) show($('lightbox'), false); };
+
+  // One QR code for every toilet — workers pick the toilet on the form.
+  let qrRendered = false;
+  function renderQr() {
+    if (qrRendered) return;
+    qrRendered = true;
+    const box = $('qrBox');
+    if (window.QRCode) new QRCode(box, { text: APP_URL, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M });
+    else box.textContent = 'QR library failed to load — refresh the page.';
+    $('qrUrl').textContent = APP_URL;
+  }
+
+  // ---------- CSV ----------
+  $('csvBtn').onclick = () => {
+    const rows = [['Date', 'Time', 'Name', 'Location ID', 'Location']].concat(
+      data.entries.map(e => [data.date, e.time, e.name, e.locId, e.locName]));
+    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'cleaning-' + data.date + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    ['overview', 'entries', 'qr'].forEach(id => show($(id), id === t.dataset.tab));
+  });
+
+  // ---------- Helpers ----------
+  function pct(a, b) { return b ? Math.round(a / b * 100) : 0; }
+  function formatDate(s) {
+    const p = s.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  const saved = sessGet('pin');
+  if (saved) login(saved);
+</script>
+</body>
+</html>
