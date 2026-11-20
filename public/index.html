@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>Mark Cleaning</title>
+  <title>Mark Attendance</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
     :root {
       --bg: #f4f6f8; --card: #ffffff; --text: #1d2430; --muted: #667085;
@@ -16,6 +18,8 @@
     .wrap { max-width: 480px; margin: 0 auto; padding: 16px; }
     .card { background: var(--card); border-radius: var(--radius); padding: 20px;
       box-shadow: 0 1px 3px rgba(16,24,40,.08); margin-bottom: 14px; }
+    .brand-card { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 48px; height: 48px; flex-shrink: 0; }
     .loc-label { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
     h1 { font-size: 22px; margin: 4px 0 0; }
     label { display: block; font-weight: 600; margin-bottom: 8px; }
@@ -71,9 +75,12 @@
   </div>
 
   <div id="form" class="hidden">
-    <div class="card">
-      <div class="loc-label" data-i18n="kicker"></div>
-      <h1 data-i18n="title"></h1>
+    <div class="card brand-card">
+      <img src="/logo.svg" alt="" class="logo">
+      <div>
+        <div class="loc-label" data-i18n="kicker"></div>
+        <h1 data-i18n="title"></h1>
+      </div>
     </div>
 
     <div class="card">

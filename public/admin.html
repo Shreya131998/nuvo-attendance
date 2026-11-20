@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cleaning Dashboard</title>
+  <title>Attendance Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -40,7 +42,9 @@
     .layout { display: flex; min-height: 100vh; }
     .sidebar { width: 230px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border);
       padding: 20px 12px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px; }
-    .brand { font-weight: 700; font-size: 17px; padding: 4px 12px 18px; }
+    .brand { display: flex; align-items: center; font-weight: 700; font-size: 17px; padding: 4px 12px 18px; }
+    .logo { width: 28px; height: 28px; vertical-align: middle; margin-right: 10px; flex-shrink: 0; }
+    .login h1 { display: flex; align-items: center; justify-content: center; }
     .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px;
       background: none; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; text-align: left; white-space: nowrap; }
     .nav-item:hover { background: #f2f4f7; color: var(--text); }
@@ -141,7 +145,7 @@
 
 <div id="loginView" class="login-wrap hidden">
   <div class="card login">
-    <h1>🧹 Cleaning Dashboard</h1>
+    <h1><img src="/logo.svg" alt="" class="logo">Attendance Dashboard</h1>
     <p class="muted">Enter admin PIN</p>
     <input id="pin" type="password" inputmode="numeric" autocomplete="current-password">
     <button id="loginBtn" class="btn">Open dashboard</button>
@@ -151,7 +155,7 @@
 
 <div id="mainView" class="layout hidden">
   <nav class="sidebar">
-    <div class="brand">🧹 Cleaning Admin</div>
+    <div class="brand"><img src="/logo.svg" alt="" class="logo">Attendance Admin</div>
     <button class="nav-item active" data-section="overview"><span class="ic">📊</span>Overview</button>
     <button class="nav-item" data-section="entries"><span class="ic">📷</span>Entries &amp; Photos</button>
     <button class="nav-item" data-section="workers"><span class="ic">👷</span>Workers</button>
@@ -274,7 +278,7 @@
             <button class="btn" onclick="window.print()">🖨 Print</button>
           </div>
           <div class="qr-card qr-single">
-            <div class="n" style="font-size:22px">🧹 Cleaning Attendance</div>
+            <img src="/logo.svg" alt="" style="width:56px;height:56px"><div class="n" style="font-size:22px">Cleaning Attendance</div>
             <div class="muted">Scan with your phone camera after cleaning</div>
             <div class="qr" id="qrBox"></div>
             <div class="i" id="qrUrl"></div>
