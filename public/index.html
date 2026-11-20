@@ -35,6 +35,7 @@
     .row .btn { flex: 1; }
     .camera-box { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
     video, #preview { display: block; width: 100%; border-radius: 12px; }
+    #video { transform: scaleX(-1); } /* mirror the live selfie view; the saved photo is not mirrored */
     .hint { font-size: 14px; color: var(--muted); margin-top: 8px; }
     .error { background: #fef3f2; color: var(--err); border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
     .warn { background: #fffaeb; color: #b54708; border-radius: 10px; padding: 12px; font-size: 15px; margin-top: 12px; }
@@ -99,7 +100,7 @@
 
       <div id="fallbackView" class="hidden">
         <label for="fileInput" class="btn" data-i18n="openCamera"></label>
-        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden">
+        <input id="fileInput" type="file" accept="image/*" capture="user" class="hidden">
         <p class="hint" data-i18n="cameraHint"></p>
       </div>
 
@@ -144,12 +145,12 @@
       selLoc: '— शौचालय चुनें —',
       qName: '2. आपका नाम',
       selName: '— अपना नाम चुनें —',
-      qPhoto: '3. साफ़ किए गए शौचालय की फ़ोटो',
-      takePhoto: '📷 फ़ोटो लें',
-      capture: 'फ़ोटो खींचें',
-      pointHint: 'साफ़ शौचालय की ओर कैमरा करें और बटन दबाएँ',
-      openCamera: '📷 कैमरा खोलें',
-      cameraHint: 'फ़ोन का कैमरा खुलेगा। गैलरी की फ़ोटो स्वीकार नहीं होगी।',
+      qPhoto: '3. सेल्फ़ी (साफ़ शौचालय के साथ)',
+      takePhoto: '🤳 सेल्फ़ी लें',
+      capture: 'सेल्फ़ी खींचें',
+      pointHint: 'साफ़ शौचालय को अपने पीछे रखें और बटन दबाएँ',
+      openCamera: '🤳 कैमरा खोलें',
+      cameraHint: 'फ़्रंट कैमरा खुलेगा — साफ़ शौचालय के साथ सेल्फ़ी लें। गैलरी की फ़ोटो स्वीकार नहीं होगी।',
       retake: '↺ दोबारा लें',
       submit: 'जमा करें',
       submitting: 'जमा हो रहा है…',
@@ -181,12 +182,12 @@
       selLoc: '— Select toilet —',
       qName: '2. Your name',
       selName: '— Select your name —',
-      qPhoto: '3. Photo of the cleaned toilet',
-      takePhoto: '📷 Take Photo',
-      capture: 'Capture photo',
-      pointHint: 'Point at the cleaned toilet and tap the button',
-      openCamera: '📷 Open Camera',
-      cameraHint: 'Your phone camera will open. Gallery photos are not accepted.',
+      qPhoto: '3. Selfie at the cleaned toilet',
+      takePhoto: '🤳 Take Selfie',
+      capture: 'Take selfie',
+      pointHint: 'Stand with the cleaned toilet behind you and tap the button',
+      openCamera: '🤳 Open Camera',
+      cameraHint: 'The front camera will open — take a selfie with the cleaned toilet behind you. Gallery photos are not accepted.',
       retake: '↺ Retake',
       submit: 'Submit',
       submitting: 'Submitting…',
@@ -364,16 +365,25 @@
       return;
     }
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      stream = await openFrontCamera();
       $('video').srcObject = stream;
       show($('startBtn'), false);
       show($('cameraView'), true);
     } catch (err) {
       // Camera blocked in this frame or permission denied — use the phone's camera app instead.
       useFallback(false);
+    }
+  }
+
+  // Front (selfie) camera. Some Android browsers ignore a preferred facing mode and open the back
+  // camera, so ask for exactly the front one first; only settle for "any camera" if that fails.
+  async function openFrontCamera() {
+    const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: { exact: 'user' } }, size), audio: false });
+    } catch (err) {
+      if (err.name === 'NotAllowedError') throw err; // permission denied: retrying won't help
+      return navigator.mediaDevices.getUserMedia({ video: Object.assign({ facingMode: 'user' }, size), audio: false });
     }
   }
 
